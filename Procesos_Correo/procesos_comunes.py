@@ -6,6 +6,7 @@ import re
 from pdf2image import convert_from_path
 import pytesseract
 from PIL import Image
+from decimal import Decimal
 
 
 # Proceso de decodificacion
@@ -54,6 +55,11 @@ def elimina_carpeta(vroot, carpeta_file):
 def convertir_fecha_carpeta():
     mydate = datetime.datetime.now()
     nombre = 'Actas&Pedidos_' + mydate.strftime('%Y%m%d')
+    return nombre
+
+def convertir_fecha_nombre():
+    mydate = datetime.datetime.now()
+    nombre = mydate.strftime('%Y%m%d')
     return nombre
 
 
@@ -144,15 +150,15 @@ def pdf_renombra_mueve(PDF_file, nombre_nuevo, destino):
 def extrae_los_datos_compras(fichero):
     vcompras = {
         'N_Pedido': '',
-        'Importe': '',
+        'Importe': 0.0,
         'Observaciones': '',
         'Empresa_Emite': '',
         'Orden_Entrega': '',
         'Documento_Referencia': '',
         'Descripcion': '',
-        'Cantidad': '',
-        'Precio_Unitario': '',
-        'Subtotal': '',
+        'Cantidad': 0,
+        'Precio_Unitario': 0.0,
+        'Subtotal': 0.0,
         'Fecha_Grabacion': '',
         'Codigo_A': '',
     }
@@ -185,10 +191,11 @@ def extrae_los_datos_compras(fichero):
                     break
 
         r1 = re.findall(r"\d{1,}\,\d{1,}", lista_encontrados[0])
-        vcompras['Importe'] = r1[1]
+        valor = str(r1[1]).replace(',', '.')
+        vcompras['Importe'] = Decimal(valor)
     except Exception as e:
         print(e)
-        vcompras['Importe'] = ''
+        vcompras['Importe'] = 0.0
 
     # Extrae Observaciones
     datoreg = r".*BQA.*"
@@ -241,7 +248,7 @@ def extrae_los_datos_compras(fichero):
         vcompras['Documento_Referencia'] = ''
 
     # Extrae Descripcion
-    datoreg = r"^DOCUMENTO DE REFERENCIA.*"
+    datoreg = r"^AUDITORIA.+?(?=\|)"
     lista_encontrados = []
     try:
         pattern = re.compile(datoreg, re.IGNORECASE)
@@ -250,21 +257,59 @@ def extrae_los_datos_compras(fichero):
                 if pattern.search(line) != None:
                     lista_encontrados.append(line)
                     break
-
-        r1 = re.findall(r"46\d{8,}", lista_encontrados[0])
+        r1 = re.findall(r"^AUDITORIA.+?(?=\|)", lista_encontrados[0])
         vcompras['Descripcion'] = r1[0]
-
     except Exception as e:
         print(e)
         vcompras['Descripcion'] = ''
-        
+
+    # Extrae Cantidad
+    datoreg = r"^AUDITORIA.+?(?=\|)"
+    lista_encontrados = []
+    try:
+        pattern = re.compile(datoreg, re.IGNORECASE)
+        with open(fichero, "rt") as myfile:
+            for line in myfile:
+                if pattern.search(line) != None:
+                    lista_encontrados.append(line)
+                    break
+        r1 = re.findall(r"\d{1,}\,\d{1,}", lista_encontrados[0])
+        valor = str(r1[0]).replace(',', '.')
+        vcompras['Cantidad'] = Decimal(valor)
+        valor2 = str(r1[1]).replace(',', '.')
+        vcompras['Precio_Unitario'] = Decimal(valor2)
+        valor3 = str(r1[2]).replace(',', '.')
+        vcompras['Subtotal'] = Decimal(valor3)
+        vcompras['Fecha_Grabacion'] = datetime.datetime.now().strftime('%d/%m/%Y')
+    except Exception as e:
+        print(e)
+        vcompras['Cantidad'] = 0
+        vcompras['Precio_Unitario'] = 0.0
+        vcompras['Subtotal'] = 0.0
+
+    # Extrae Codigo_Autoaceptacion
+    datoreg = r"^ORANGE \w.*"
+    lista_encontrados = []
+    try:
+        pattern = re.compile(datoreg, re.IGNORECASE)
+        with open(fichero, "rt") as myfile:
+            for line in myfile:
+                if pattern.search(line) != None:
+                    lista_encontrados.append(line)
+                    break
+        vcompras['Empresa_Emite'] = lista_encontrados[0].rstrip()
+    except Exception as e:
+        print(e)
+        vcompras['Empresa_Emite'] = ''
 
 
     return vcompras
 
 
-def fichero_pdf_imagen_texto_oc(PDF_file, ficheros_respaldo, carpeta_trabajo, carpetas_trabajo):
+def fichero_pdf_imagen_texto_oc(PDF_file, ficheros_respaldo, carpeta_trabajo):
     d = dict()
+    consolidado = []
+    d['Resultado'] = 'OK'
     fichero_nombre, fichero_extension = os.path.splitext(os.path.basename(PDF_file))
     try:
         '''
@@ -301,18 +346,10 @@ def fichero_pdf_imagen_texto_oc(PDF_file, ficheros_respaldo, carpeta_trabajo, ca
         d['Fichero_Texto'] = outfile
         d['Error'] = ''
 
-        # EXTRACCION DE DATOS
-        vcompras = extrae_los_datos_compras(outfile)
-
-        try:
-            pdf_renombra_mueve(PDF_file, vcompras['N_Pedido'], carpetas_trabajo['Pedido'])
-        except Exception as e1:
-            print('No se ha podido mover el fichero {}, error {}'.format(PDF_file ,e1))
-
-
     except Exception as e:
+        d['Resultado'] = 'KO'
         d['Fichero_Texto'] = ''
-        d['Error'] = 'Error al convertir en texto el fichero ' + PDF_file + '   ' + e
+        d['Error'] = 'Error al convertir en texto el fichero ' + PDF_file + '   ' + str(e)
 
     return d
 
@@ -396,8 +433,10 @@ def busca_datos_pdf_texto(datoreg, filename):
 # if (len(intll['ListaEncontrados']) >= 1):
 #    print(intll)
 
-c = extrae_los_datos_compras('C:/CORREOS_AUTOMATIZACION/Actas&Pedidos_20210219/Pedido/TempPedido/DOCUMENTO1.txt')
-print(c)
+# c = extrae_los_datos_compras('C:/CORREOS_AUTOMATIZACION/Actas&Pedidos_20210219/Pedido/TempPedido/DOCUMENTO1.txt')
+# print(c)
 
 #pdf_renombra_mueve(r'C:\CORREOS_AUTOMATIZACION\Actas&Pedidos_20210218\Pedido\TempPedido\DOCUMENTO1.PDF', '7777',
 #                   r'C:\CORREOS_AUTOMATIZACION\Actas&Pedidos_20210218\Pedido')
+
+##print(Decimal('3.17'))
