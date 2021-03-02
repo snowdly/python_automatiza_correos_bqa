@@ -13,7 +13,7 @@ def seleccion_fichero(directorio_inicial):
     Fichero_Auditoria = ""
     root = tk.Tk()
     root.title("Automatización Correos Facturas BQA")
-    width = 670
+    width = 770
     height = 240
     screenwidth = root.winfo_screenwidth()
     screenheight = root.winfo_screenheight()
@@ -28,7 +28,7 @@ def seleccion_fichero(directorio_inicial):
     GLabel_Fichero = tk.Label(labelframe, font=ftl, text="Resultados en:", justify="center")
     GLabel_Fichero.place(x=25, y=35, width=120, height=30)
     TxtFichero = tk.Entry(labelframe, text="", font=ft)
-    TxtFichero.place(x=25 + 120, y=35, width=400, height=25)
+    TxtFichero.place(x=25 + 130, y=35, width=430, height=25)
 
     def btnSeleccionar_command():
         nonlocal Continuar_Proceso
@@ -40,7 +40,8 @@ def seleccion_fichero(directorio_inicial):
             directorio_inicial = "/"
         root.filename = filedialog.askdirectory(initialdir=directorio_inicial, title="Seleccionar Auditoría")
         # Change label contents
-        TxtFichero.delete(0, tk.END)
+        if root.filename != '':
+            TxtFichero.delete(0, tk.END)
         TxtFichero.insert(0, root.filename)
         Fichero_Auditoria = root.filename
         # GLabel_Fichero.configure(text= root.filename)
@@ -50,7 +51,7 @@ def seleccion_fichero(directorio_inicial):
     Fichero_Auditoria = directorio_inicial
 
     btnSeleccionar = tk.Button(labelframe, text="Seleccionar", font=ftl, command=btnSeleccionar_command)
-    btnSeleccionar.place(x=25 + 120 + 410, y=35)
+    btnSeleccionar.place(x=25 + 120 + 450, y=35)
 
     # BOTONES
     def btnAceptar_command():

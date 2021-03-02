@@ -38,6 +38,15 @@ def elimina_carpetas_temporales(vroot):
         shutil.rmtree(os.path.join(vroot, 'Pedido', 'TempPedido'))
 
 
+def elimina_carpetas_temporales_tipo(vroot, tipo):
+    if tipo == 'Aceptacion':
+        if os.path.exists(os.path.join(vroot, 'Aceptacion', 'TempAceptacion')):
+            shutil.rmtree(os.path.join(vroot, 'Aceptacion', 'TempAceptacion'))
+    if tipo == 'Pedido':
+        if os.path.exists(os.path.join(vroot, 'Pedido', 'TempPedido')):
+            shutil.rmtree(os.path.join(vroot, 'Pedido', 'TempPedido'))
+
+
 # Crear carpeta temporal
 def crea_carpeta(vroot, carpeta_file):
     # carpeta_file = 'TempCompras'
@@ -181,10 +190,10 @@ def extrae_los_datos_compras(fichero):
         r1 = re.findall(r"\d{6,}", lista_encontrados[0])
         vcompras['N_Pedido'] = r1[0]
     except Exception as e:
-        print(e)
+        # print(e)
         vcompras['N_Pedido'] = ''
 
-    print("Procesando Nro de Pedido: {}".format(vcompras['N_Pedido']))
+    print("Pedidos procesando Nro de Pedido: {}".format(vcompras['N_Pedido']))
 
     # Extrae Importe
     datoreg = r"\|.*"
@@ -201,7 +210,7 @@ def extrae_los_datos_compras(fichero):
         valor = str(r1[1]).replace(',', '.')
         vcompras['Importe'] = Decimal(valor)
     except Exception as e:
-        print(e)
+        # print(e)
         vcompras['Importe'] = 0.0
 
     # Extrae Observaciones
@@ -217,7 +226,7 @@ def extrae_los_datos_compras(fichero):
         vcompras['Observaciones'] = lista_encontrados[0].rstrip()
 
     except Exception as e:
-        print(e)
+        # print(e)
         vcompras['Observaciones'] = ''
 
     # Extrae Empresa Emite
@@ -232,7 +241,7 @@ def extrae_los_datos_compras(fichero):
                     break
         vcompras['Empresa_Emite'] = lista_encontrados[0].rstrip()
     except Exception as e:
-        print(e)
+        # print(e)
         vcompras['Empresa_Emite'] = ''
 
     # Extrae Orden Entrega
@@ -250,7 +259,7 @@ def extrae_los_datos_compras(fichero):
         vcompras['Orden_Entrega'] = r1[0]
         vcompras['Documento_Referencia'] = r1[0]
     except Exception as e:
-        print(e)
+        # print(e)
         vcompras['Orden_Entrega'] = ''
         vcompras['Documento_Referencia'] = ''
 
@@ -267,7 +276,7 @@ def extrae_los_datos_compras(fichero):
         r1 = re.findall(r"^AUDITORIA.+?(?=\|)", lista_encontrados[0])
         vcompras['Descripcion'] = r1[0]
     except Exception as e:
-        print(e)
+        # print(e)
         vcompras['Descripcion'] = ''
 
     # Extrae Cantidad
@@ -289,7 +298,7 @@ def extrae_los_datos_compras(fichero):
         vcompras['Subtotal'] = Decimal(valor3)
         vcompras['Fecha_Grabacion'] = datetime.datetime.now().strftime('%d/%m/%Y')
     except Exception as e:
-        print(e)
+        # print(e)
         vcompras['Cantidad'] = 0
         vcompras['Precio_Unitario'] = 0.0
         vcompras['Subtotal'] = 0.0
@@ -298,7 +307,7 @@ def extrae_los_datos_compras(fichero):
     try:
         vcompras['Fecha_Grabacion']=convertir_fecha_grabacion()
     except Exception as e:
-        print(e)
+        # print(e)
         vcompras['Fecha_Grabacion'] = ''
 
     # Extrae Codigo_Autoaceptacion
@@ -314,7 +323,7 @@ def extrae_los_datos_compras(fichero):
         r1 = re.findall(r"\d{5,}", lista_encontrados[0])
         vcompras['Codigo_A'] = r1[0]
     except Exception as e:
-        print(e)
+        # print(e)
         vcompras['Codigo_A'] = ''
 
     # Extrae Codigo_Autoaceptacion - Si no se encuentra
@@ -331,7 +340,7 @@ def extrae_los_datos_compras(fichero):
             r1 = re.findall(r"\d{5,}", lista_encontrados[0])
             vcompras['Codigo_A'] = r1[0]
         except Exception as e:
-            print(e)
+            # print(e)
             vcompras['Codigo_A'] = ''
 
     return vcompras
@@ -362,12 +371,18 @@ def extrae_los_datos_aceptacion(fichero):
 
         r1 = re.findall(r"^70\d{8,}", lista_encontrados[0])
         vaceptacion['N_Pedido'] = r1[0]
-        r2 = re.findall(r"^50\d{8,}", lista_encontrados[0])
+    except Exception as e:
+        #print(e)
+        vaceptacion['N_Pedido'] = ''
+    try:
+        r2 = re.findall(r"50\d{8,}", lista_encontrados[0])
         vaceptacion['Acta_Aceptacion'] = r2[0]
     except Exception as e:
         print(e)
         vaceptacion['N_Pedido'] = ''
         vaceptacion['Acta_Aceptacion'] = ''
+
+    print("Acta de Aceptación procesando Nro de Pedido: {}".format(vaceptacion['N_Pedido']))
 
     # Extrae Importe
     datoreg = r".*(\d{1,}\.\d{1,}\,\d{1,}|\d{1,}\,\d{1,}).*"
@@ -383,12 +398,76 @@ def extrae_los_datos_aceptacion(fichero):
         r1 = re.findall(r"(\d{1,}\.\d{1,}\,\d{1,}|\d{1,}\,\d{1,})", lista_encontrados[0])
         valor = str(r1[0]).replace('.', '')
         valor = valor.replace(',', '.')
+        vaceptacion['Precio_Unitario'] = Decimal(valor)
+    except Exception as e:
+        print(e)
+        vaceptacion['Precio_Unitario'] = 0.0
+
+    # Cantidad
+    try:
+        valorunidad = str(r1[2]).replace('.', '')
+        valorunidad = valorunidad.replace(',', '.')
+        vaceptacion['Cantidad'] = Decimal(valorunidad)
+    except Exception as e:
+        vaceptacion['Cantidad'] = 0
+
+    # SubTotal
+    try:
+        valorsub = str(r1[3]).replace('.', '')
+        valorsub = valorsub.replace(',', '.')
+        vaceptacion['Subtotal'] = Decimal(valorsub)
+    except Exception as e:
+        vaceptacion['Subtotal'] = 0
+
+    # Descripcion
+    try:
+        rd = re.findall(r"^.+?(?=\d{1,}\,)", lista_encontrados[0])
+        vaceptacion['Descripcion'] = rd[0]
+        if len(vaceptacion['Descripcion'])<5:
+            rd = re.findall(r"^.+?(?=\d{1,}\.)", lista_encontrados[0])
+            vaceptacion['Descripcion'] = rd[0]
+    except Exception as e:
+        vaceptacion['Descripcion'] = ''
+
+    # Fecha_Aceptacion
+    try:
+        rf = re.findall(r"\d{2}\.\d{2}.\d{4}", lista_encontrados[0])
+        F = str(rf[0]).replace('.', '/')
+        vaceptacion['Fecha_Aceptacion'] = F
+
+    except Exception as e:
+        vaceptacion['Fecha_Aceptacion'] = ''
+
+
+
+    # Importe
+    datoreg = r".*EUR.*"
+    lista_encontrados = []
+    try:
+        pattern = re.compile(datoreg, re.IGNORECASE)
+        with open(fichero, "rt") as myfile:
+            for line in myfile:
+                if pattern.search(line) != None:
+                    lista_encontrados.append(line)
+                    break
+
+        rimporte = re.findall(r"(\d{1,}\.\d{1,}\,\d{1,}|\d{1,}\,\d{1,})", lista_encontrados[0])
+        valor = str(rimporte[0]).replace('.', '')
+        valor = valor.replace(',', '.')
         vaceptacion['Importe'] = Decimal(valor)
     except Exception as e:
         print(e)
         vaceptacion['Importe'] = 0.0
 
 
+
+
+    # Fecha grabacion
+    try:
+        vaceptacion['Fecha_Grabacion'] = convertir_fecha_grabacion()
+    except Exception as e:
+        # print(e)
+        vaceptacion['Fecha_Grabacion'] = ''
 
     return vaceptacion
 
@@ -519,8 +598,8 @@ def busca_datos_pdf_texto(datoreg, filename):
 # if (len(intll['ListaEncontrados']) >= 1):
 #    print(intll)
 
-c = extrae_los_datos_aceptacion('C:/CORREOS_AUTOMATIZACION/Actas&Pedidos_20210220/Aceptacion/TempAceptacion/DOCUMENTO1.txt')
-print(c)
+#c = extrae_los_datos_aceptacion('C:/CORREOS_AUTOMATIZACION/Actas&Pedidos_20210220/Aceptacion/TempAceptacion/DOCUMENTO1.txt')
+#print(c)
 
 #pdf_renombra_mueve(r'C:\CORREOS_AUTOMATIZACION\Actas&Pedidos_20210218\Pedido\TempPedido\DOCUMENTO1.PDF', '7777',
 #                   r'C:\CORREOS_AUTOMATIZACION\Actas&Pedidos_20210218\Pedido')
