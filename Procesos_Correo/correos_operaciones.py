@@ -261,3 +261,74 @@ def descargar_adjuntos(vhost, vuser, vpassword, vbuzon, vroot, vcriterio, vcarpe
         mail.close()
         mail.logout()
     return respuesta
+
+
+# Proceso de descarga de PDF
+def descargar_adjuntos_no_cambio(vhost, vuser, vpassword, vbuzon, vroot, vcriterio, vcarpetatemp):
+    respuesta = {
+        'resultado': 'OK',
+        'cantidad_correos': 0,
+        'error': ''
+    }
+    try:
+        # Crear la carpeta
+        # carpeta_file = vcarpetatemp
+        # procesos_comunes.elimina_carpeta(vroot, carpeta_file)
+        # procesos_comunes.crea_carpeta(vroot, carpeta_file)
+        # svdir = os.path.join(vroot, carpeta_file)
+        svdir = vcarpetatemp
+
+        mail = imaplib.IMAP4_SSL(vhost, 993)
+        mail.login(vuser, vpassword)
+        typ, data = mail.select(vbuzon)
+        if typ != 'OK':
+            raise ValueError('No existe la carpeta {}'.format(vbuzon))
+        num_msgs = int(data[0])
+        print('Existen {} correos en {}'.format(num_msgs, vbuzon))
+        respuesta['cantidad_correos'] = num_msgs
+
+        # Filtrado por Subject
+        typ, msgs = mail.search(None, vcriterio)
+        #print('Existen {} correos con el Subject indicado '.format(msgs[0]))
+
+        # Descargado de adjuntos
+        contador = 0
+        msgs = msgs[0].split()
+        for emailid in msgs:
+            resp, data = mail.fetch(emailid, "(RFC822)")
+            email_body = data[0][1]
+            m = email.message_from_bytes(email_body)
+            if m.get_content_maintype() != 'multipart': continue
+
+            for part in m.walk():
+                if part.get_content_maintype() == 'multipart': continue
+                if part.get('Content-Transfer-Encoding') is None: continue
+
+                filename: str = part.get_filename()
+                if filename is None: continue
+                try:
+                    filename = procesos_comunes.sender_decode(filename)
+                except IndexError:
+                    filename = part.get_filename()
+                if filename is not None:
+                    contador = contador + 1
+                    sv_path = os.path.join(svdir, filename)
+                    fp = open(sv_path, 'wb')
+                    fp.write(part.get_payload(decode=True))
+                    fp.close()
+                    fichero_nombre, fichero_extension = os.path.splitext(sv_path)
+                    os.rename(os.path.join(svdir, fichero_nombre + fichero_extension), os.path.join(svdir,
+                                                                                                    fichero_nombre + fichero_extension.upper()))
+                    print("Se ha descargado: {}".format(fichero_nombre+ fichero_extension.upper()))
+        print("Total descargado {} documentos".format(str(contador)))
+
+    except Exception as e:
+        respuesta = {
+            'resultado': 'KO',
+            'cantidad_correos': 0,
+            'error': e
+        }
+    finally:
+        mail.close()
+        mail.logout()
+    return respuesta

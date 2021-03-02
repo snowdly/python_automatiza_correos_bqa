@@ -62,6 +62,11 @@ def convertir_fecha_nombre():
     nombre = mydate.strftime('%Y%m%d')
     return nombre
 
+def convertir_fecha_grabacion():
+    mydate = datetime.datetime.now()
+    nombre = mydate.strftime('%d/%m/%Y')
+    return nombre
+
 
 # TRANSFORMA UN FICHERO PDF EN TEXTO POR MEDIO DE OCR
 def fichero_pdf_imagen_texto(PDF_file, ficheros_respaldo, carpeta_trabajo, nameTemp):
@@ -179,6 +184,8 @@ def extrae_los_datos_compras(fichero):
         print(e)
         vcompras['N_Pedido'] = ''
 
+    print("Procesando Nro de Pedido: {}".format(vcompras['N_Pedido']))
+
     # Extrae Importe
     datoreg = r"\|.*"
     lista_encontrados = []
@@ -287,8 +294,15 @@ def extrae_los_datos_compras(fichero):
         vcompras['Precio_Unitario'] = 0.0
         vcompras['Subtotal'] = 0.0
 
+    # Fecha grabacion
+    try:
+        vcompras['Fecha_Grabacion']=convertir_fecha_grabacion()
+    except Exception as e:
+        print(e)
+        vcompras['Fecha_Grabacion'] = ''
+
     # Extrae Codigo_Autoaceptacion
-    datoreg = r"^ORANGE \w.*"
+    datoreg = r"- (74|75|76|77)\d{4,}"
     lista_encontrados = []
     try:
         pattern = re.compile(datoreg, re.IGNORECASE)
@@ -297,14 +311,86 @@ def extrae_los_datos_compras(fichero):
                 if pattern.search(line) != None:
                     lista_encontrados.append(line)
                     break
-        vcompras['Empresa_Emite'] = lista_encontrados[0].rstrip()
+        r1 = re.findall(r"\d{5,}", lista_encontrados[0])
+        vcompras['Codigo_A'] = r1[0]
     except Exception as e:
         print(e)
-        vcompras['Empresa_Emite'] = ''
+        vcompras['Codigo_A'] = ''
 
+    # Extrae Codigo_Autoaceptacion - Si no se encuentra
+    if vcompras['Codigo_A'] == '':
+        datoreg = r"^(74|75|76|77)\d{4,}"
+        lista_encontrados = []
+        try:
+            pattern = re.compile(datoreg, re.IGNORECASE)
+            with open(fichero, "rt") as myfile:
+                for line in myfile:
+                    if pattern.search(line) != None:
+                        lista_encontrados.append(line)
+                        break
+            r1 = re.findall(r"\d{5,}", lista_encontrados[0])
+            vcompras['Codigo_A'] = r1[0]
+        except Exception as e:
+            print(e)
+            vcompras['Codigo_A'] = ''
 
     return vcompras
 
+
+def extrae_los_datos_aceptacion(fichero):
+    vaceptacion = {
+        'N_Pedido': '',
+        'Acta_Aceptacion': '',
+        'Importe': 0.0,
+        'Descripcion': '',
+        'Cantidad': 0,
+        'Precio_Unitario': 0.0,
+        'Subtotal': 0.0,
+        'Fecha_Aceptacion': '',
+        'Fecha_Grabacion': ''
+    }
+    # Extrae N_Pedido
+    datoreg = r"^70\d{8,}.*"
+    lista_encontrados = []
+    try:
+        pattern = re.compile(datoreg, re.IGNORECASE)
+        with open(fichero, "rt") as myfile:
+            for line in myfile:
+                if pattern.search(line) != None:
+                    lista_encontrados.append(line)
+                    break
+
+        r1 = re.findall(r"^70\d{8,}", lista_encontrados[0])
+        vaceptacion['N_Pedido'] = r1[0]
+        r2 = re.findall(r"^50\d{8,}", lista_encontrados[0])
+        vaceptacion['Acta_Aceptacion'] = r2[0]
+    except Exception as e:
+        print(e)
+        vaceptacion['N_Pedido'] = ''
+        vaceptacion['Acta_Aceptacion'] = ''
+
+    # Extrae Importe
+    datoreg = r".*(\d{1,}\.\d{1,}\,\d{1,}|\d{1,}\,\d{1,}).*"
+    lista_encontrados = []
+    try:
+        pattern = re.compile(datoreg, re.IGNORECASE)
+        with open(fichero, "rt") as myfile:
+            for line in myfile:
+                if pattern.search(line) != None:
+                    lista_encontrados.append(line)
+                    break
+
+        r1 = re.findall(r"(\d{1,}\.\d{1,}\,\d{1,}|\d{1,}\,\d{1,})", lista_encontrados[0])
+        valor = str(r1[0]).replace('.', '')
+        valor = valor.replace(',', '.')
+        vaceptacion['Importe'] = Decimal(valor)
+    except Exception as e:
+        print(e)
+        vaceptacion['Importe'] = 0.0
+
+
+
+    return vaceptacion
 
 def fichero_pdf_imagen_texto_oc(PDF_file, ficheros_respaldo, carpeta_trabajo):
     d = dict()
@@ -433,8 +519,8 @@ def busca_datos_pdf_texto(datoreg, filename):
 # if (len(intll['ListaEncontrados']) >= 1):
 #    print(intll)
 
-# c = extrae_los_datos_compras('C:/CORREOS_AUTOMATIZACION/Actas&Pedidos_20210219/Pedido/TempPedido/DOCUMENTO1.txt')
-# print(c)
+c = extrae_los_datos_aceptacion('C:/CORREOS_AUTOMATIZACION/Actas&Pedidos_20210220/Aceptacion/TempAceptacion/DOCUMENTO1.txt')
+print(c)
 
 #pdf_renombra_mueve(r'C:\CORREOS_AUTOMATIZACION\Actas&Pedidos_20210218\Pedido\TempPedido\DOCUMENTO1.PDF', '7777',
 #                   r'C:\CORREOS_AUTOMATIZACION\Actas&Pedidos_20210218\Pedido')
