@@ -4,7 +4,7 @@ from Procesos_Correo import correos_operaciones
 import os
 import pandas as pd
 
-# Datos geberales
+# Datos generales
 nominal = 'C:/CORREOS_AUTOMATIZACION'
 nominal_respaldo = os.path.join(nominal, 'Ficheros_Respaldo')
 vroot = os.path.join(nominal, procesos_comunes.convertir_fecha_carpeta())
@@ -127,5 +127,18 @@ if Continuar_Ventana:
     writer.save()
     procesos_comunes.elimina_carpetas_temporales_tipo(vroot, 'Aceptacion')
 
-else:
-    print("Rechazado")
+
+
+print("")
+print("")
+print("")
+print("")
+print("")
+print("")
+print("************************************************************************************************")
+print("")
+print("******************************** Ejecución terminada correctamente *****************************")
+print("")
+print("************************************************************************************************")
+print("")
+wait = input("                            Puede cerrar la ventana.")
